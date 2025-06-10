@@ -1,0 +1,111 @@
+import { test, expect } from '@playwright/test';
+import { loginFixture } from './Fixtures/Login.fixture';
+import { logoutfixrture } from './Fixtures/Logout.fixture';
+import path from 'path';
+import fs from 'fs';
+
+
+const screenshotDir = path.join(__dirname, '../screenshots');//Always create the correct screenshot directory outside the fixture folder
+if (!fs.existsSync(screenshotDir)) {
+  fs.mkdirSync(screenshotDir, { recursive: true });//FOlder exsist check line 
+}
+
+
+test.beforeEach(async ({ page }) => {
+  await loginFixture(page); 
+  test.slow();
+});
+
+//If u want wholepage screenshot let's do some changes in screenshot syntx ..Shouldn't added locator and change These Lines 
+//  const filepath=path.join(screenshotDir,'Eametamodelmainpage.png');
+    //await page.screenshot({path: filepath, fullPage: true});
+
+
+
+
+test('Ea principles title', async ({ page }) => {
+  await page.locator('#eaPrinciples').click();
+  await page.waitForTimeout(4000);
+const element = await page.$('xpath=/html/body/app-root/div/div[2]/app-dashboard/div/div[1]/div[1]/p');
+ if (element) await element.screenshot({ path: path.join(screenshotDir, 'EaprinciplesTittle.png') });
+await page.waitForTimeout(4000);
+//Add button
+const element1=await page.$('xpath=/html/body/app-root/div/div[2]/app-dashboard/div/div[2]/app-ea-principles/div/div/div/mat-tab-group/div/mat-tab-body[1]/div/div[1]');
+if (element1)await element1.screenshot({path: path.join(screenshotDir,'Eaprincipleaddbutton.png')});
+await page.waitForTimeout(4000);
+});
+test('Ea principles table headings',async({page})=>{
+   await page.locator('#eaPrinciples').click();
+  await page.waitForTimeout(4000);
+  const element=await page.$('xpath=/html/body/app-root/div/div[2]/app-dashboard/div/div[2]/app-ea-principles/div/div/div/mat-tab-group/div/mat-tab-body[1]/div/div[2]/app-new-dynamic-table/div/mat-table/tr[1]');
+   if (element) await element.screenshot({ path: path.join(screenshotDir, 'Eaprinciplesmaintabletittle.png') });
+await page.waitForTimeout(4000);
+});
+test('Ea principles add form',async({page})=>{
+  await page.locator('#eaPrinciples').click();
+  await page.waitForTimeout(4000);
+  await page.getByTitle('Add Enterprise Architecture Principle').click();
+  await page.waitForTimeout(4000);
+   await page.waitForLoadState('networkidle');
+    const element=await page.$('.dialogTitle');
+    if (element)await element.screenshot({ path: path.join(screenshotDir,'Eaprincipleaddformtittle.png')});
+    await page.waitForTimeout(10000);
+    const element1 = await page.getByRole('tablist').first(); // or .nth(0) if needed
+if (element1)await element1.screenshot({ path: path.join(screenshotDir,'Eaprincipleaddformtabs.png')});
+    await page.waitForTimeout(5000);
+    await page.locator('#commonclose').click();
+await page.waitForTimeout(5000);
+});
+
+
+
+
+
+Compare testing:.
+
+import { test, expect } from '@playwright/test';
+import { loginFixture } from './Fixtures/Login.fixture';
+import { logoutfixrture } from './Fixtures/Logout.fixture';
+import type { Locator, ElementHandle } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
+import { PNG } from 'pngjs';
+
+const screenshotDir = path.join(__dirname, '../screenshots');//Source Directory Setup
+const newScreenshotDir = path.join(__dirname, '../Newscreenshots');//Newly taken screenshor
+
+async function compareElementScreenshot(element: Locator | ElementHandle, baseline: string, diff: string) {
+  const base = PNG.sync.read(fs.readFileSync(path.join(screenshotDir, baseline)));//Read baseline image 
+  const currBuffer = await element.screenshot();//New screenshot 
+  const curr = PNG.sync.read(currBuffer);//Read current image 
+ const diffImg = new PNG({ width: base.width, height: base.height });//Prepare frame 
+const { default: pixelmatch } = await import('pixelmatch');//dependency import 
+const mismatch = pixelmatch(base.data, curr.data, diffImg.data, base.width, base.height, { threshold: 0.1 });//Save new image 
+fs.writeFileSync(path.join(newScreenshotDir, diff), PNG.sync.write(diffImg));//validate mismatch things 
+const totalPixels = base.width * base.height;
+expect(mismatch / totalPixels).toBeLessThan(0.01); // Allow < 1% mismatch
+}
+
+test.beforeEach(async ({ page }) => {
+await page.addStyleTag({  //Animation disable 
+    content: `*, *::before, *::after {
+      transition: none !important;
+      animation: none !important;
+    }`
+  });
+    await loginFixture(page);
+
+  test.slow();
+});
+test('Business object model main page', async ({ page }) => {
+  await page.locator('#busObjModel').click();
+  await page.waitForTimeout(3000);
+const element = await page.$('xpath=/html/body/app-root/div/div[2]/app-dashboard/div/div[1]/div[1]/p');//Particular dive locator 
+if (element) {await compareElementScreenshot(element, 'Businessobjectmodelheader.png', 'Businessobjectmodelheader_diff.png');
+await page.waitForTimeout(4000);
+}
+});
+
+
+
+

@@ -1,0 +1,143 @@
+Regression Visual testing In playwright:
+
+Full Page Content:
+=>  Sourse 
+   import { test, expect } from '@playwright/test';
+import { loginFixture } from './Fixtures/Login.fixture';
+import { logoutfixrture } from './Fixtures/Logout.fixture';
+import path from 'path';
+import fs from 'fs';
+
+
+const screenshotDir = path.join(__dirname, '../screenshots');//Always create the correct screenshot directory outside the fixture folder
+if (!fs.existsSync(screenshotDir)) {
+  fs.mkdirSync(screenshotDir, { recursive: true });//FOlder exsist check line 
+}
+
+
+test.beforeEach(async ({ page }) => {
+  await loginFixture(page); 
+  test.slow();
+});
+
+
+test('Check the dashboard  ',async({page})=>{
+  await page.waitForTimeout(10000);
+const filepath =path.join(screenshotDir,'Dashboard.png');
+    await page.screenshot({path: filepath, fullPage: true});
+    await page.waitForTimeout(4000);
+
+=> Regression comapare
+import { test, expect } from '@playwright/test';
+import { loginFixture } from './Fixtures/Login.fixture';
+import { logoutfixrture } from './Fixtures/Logout.fixture';
+import fs from 'fs';
+import path from 'path';
+import { PNG } from 'pngjs';
+
+// Screenshot comparison utility function
+const screenshotDir = path.join(__dirname, '../screenshots');
+const newScreenshotDir = path.join(__dirname, '../Newscreenshots');
+
+async function compareScreenshot(page, baseline: string, diff: string) {
+  await page.waitForLoadState('networkidle');
+  const base = PNG.sync.read(fs.readFileSync(path.join(screenshotDir, baseline)));
+  const curr = PNG.sync.read(await page.screenshot({ fullPage: true }));
+  const diffImg = new PNG({ width: base.width, height: base.height });
+  const { default: pixelmatch } = await import('pixelmatch');
+  const mismatch = pixelmatch(base.data, curr.data, diffImg.data, base.width, base.height, { threshold: 0 });
+  fs.writeFileSync(path.join(newScreenshotDir, diff), PNG.sync.write(diffImg));
+  const totalPixels = base.width * base.height;
+  expect(mismatch / totalPixels).toBeLessThan(0.01); // Allow < 1% diff
+}
+
+
+// Before each test
+test.beforeEach(async ({ page }) => {
+await page.addStyleTag({
+    content: `*, *::before, *::after {
+      transition: none !important;
+      animation: none !important;
+    }`
+  });
+    await loginFixture(page);
+  test.slow();
+});
+
+// Test cases
+test('Compare dashboard screenshot', async ({ page }) => {
+  await page.waitForTimeout(5000);
+  await compareScreenshot(page, 'Dashboard.png', 'dashboard.png');
+  await page.waitForTimeout(2000);
+});
+
+
+
+Particular palce :
+=>source
+import { test, expect } from '@playwright/test';
+import { loginFixture } from './Fixtures/Login.fixture';
+import { logoutfixrture } from './Fixtures/Logout.fixture';
+import path from 'path';
+import fs from 'fs';
+
+
+const screenshotDir = path.join(__dirname, '../screenshots');//Always create the correct screenshot directory outside the fixture folder
+if (!fs.existsSync(screenshotDir)) {
+  fs.mkdirSync(screenshotDir, { recursive: true });//FOlder exsist check line 
+}
+
+
+test.beforeEach(async ({ page }) => {
+  await loginFixture(page); 
+  test.slow();
+});
+test('Application classification main page tittle',async({page})=>{
+    await page.locator('#app_Classification').click();
+    await page.waitForTimeout(4000);
+    const element = await page.$('.pageTitleDiv');
+       if (element) await element.screenshot({ path: path.join(screenshotDir, 'Applicationclassificationtittle.png') });
+      await page.waitForTimeout(4000);
+});
+
+=>Compare
+  
+ import { test, expect } from '@playwright/test';
+import { loginFixture } from './Fixtures/Login.fixture';
+import { logoutfixrture } from './Fixtures/Logout.fixture';
+import type { Locator, ElementHandle } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
+import { PNG } from 'pngjs';
+
+const screenshotDir = path.join(__dirname, '../screenshots');//Source Directory Setup
+const newScreenshotDir = path.join(__dirname, '../Newscreenshots');//Newly taken screenshor
+
+async function compareElementScreenshot(element: Locator | ElementHandle, baseline: string, diff: string) {
+  const base = PNG.sync.read(fs.readFileSync(path.join(screenshotDir, baseline)));//Read baseline image 
+  const currBuffer = await element.screenshot();//New screenshot 
+  const curr = PNG.sync.read(currBuffer);//Read current image 
+ const diffImg = new PNG({ width: base.width, height: base.height });//Prepare frame 
+const { default: pixelmatch } = await import('pixelmatch');//dependency import 
+const mismatch = pixelmatch(base.data, curr.data, diffImg.data, base.width, base.height, { threshold: 0.1 });//Save new image 
+fs.writeFileSync(path.join(newScreenshotDir, diff), PNG.sync.write(diffImg));//validate mismatch things 
+const totalPixels = base.width * base.height;
+expect(mismatch / totalPixels).toBeLessThan(0.01); // Allow < 1% mismatch
+}
+test.beforeEach(async ({ page }) => {
+await page.addStyleTag({  //Animation disable 
+    content: `*, *::before, *::after {
+      transition: none !important;
+      animation: none !important;
+    }`
+  });
+    await loginFixture(page);
+      test.slow();
+});
+test('Application classification main page tittle',async({page})=>{
+    await page.locator('#app_Classification').click();
+    await page.waitForTimeout(4000);
+    const element = await page.$('.pageTitleDiv');
+    if (element) {await compareElementScreenshot(element, 'Applicationclassificationtittle.png', 'Applicationclassificationtittle.png');
+}
+     
